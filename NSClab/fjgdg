@@ -1,0 +1,64 @@
+import socket
+import random
+
+# Server configuration
+host = '127.0.0.1'  # Loopback address (localhost)
+port = 12345       # Port to listen on
+
+# Shared prime number and base (publicly known)
+p = 23  # Prime number
+g = 5   # Primitive root modulo p
+
+# Server's private key
+server_private_key = random.randint(1, 10)
+
+# Calculate the server's public key
+server_public_key = (g ** server_private_key) % p
+
+# Create a socket object
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# Bind the socket to the address and port
+server_socket.bind((host, port))
+
+# Listen for incoming connections
+server_socket.listen(1)  # Maximum number of queued connections
+
+print(f"Server listening on {host}:{port}")
+
+# Accept a connection from the client
+client_socket, client_address = server_socket.accept()
+print(f"Connected to {client_address}")
+
+# Send the server's public key to the client
+client_socket.send(str(server_public_key).encode('utf-8'))
+
+# Receive the client's public key
+client_public_key = int(client_socket.recv(1024).decode('utf-8'))
+
+# Calculate the shared secret key
+shared_secret_key = (client_public_key ** server_private_key) % p
+print(f"Shared Secret Key: {shared_secret_key}")
+
+while True:
+    # Receive an encrypted message from the client
+    encrypted_message = client_socket.recv(1024).decode('utf-8')
+    
+    if not encrypted_message:
+        break
+    
+    # Decrypt the message using the shared secret key (simple XOR for demonstration)
+    decrypted_message = ''.join([chr(ord(c) ^ shared_secret_key) for c in encrypted_message])
+    print(f"Received from client (encrypted): {encrypted_message}")
+    print(f"Decrypted message: {decrypted_message}")
+
+    # Send a response back to the client (encrypted)
+    response = input("Enter a response: ")
+    
+    # Encrypt the response using the shared secret key (simple XOR for demonstration)
+    encrypted_response = ''.join([chr(ord(c) ^ shared_secret_key) for c in response])
+    client_socket.send(encrypted_response.encode('utf-8'))
+
+# Close the connection
+client_socket.close()
+server_socket.close()
